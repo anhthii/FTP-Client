@@ -1,4 +1,4 @@
-#include "FTPClient.h"
+#include "libs/FTPClient.h"
 #include <string>
 #include <iostream>
 
@@ -15,17 +15,17 @@ int main(int argc, char*argv[]) {
   FTPClient ftpClient("127.0.0.1", PORT);
   std::string userName, password;
   std::cout << "Username: ";
-  std::cin >> userName; 
+  std::getline(std::cin, userName); 
   ftpClient.sendUsername(userName);
   std::cout << "Password: ";
-  std::cin >> password;
+  std::getline(std::cin, password);
   bool resp = ftpClient.sendPassword(password);
   if (resp == false) {
     std::cout << "Login failed.\n";
     exit(1);
   }
 
-  while(1) {
+  while (1) {
     std::string cmd;
     std::cout << "ftp> ";
     std::getline(std::cin, cmd);
