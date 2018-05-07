@@ -7,7 +7,7 @@
 using std::string;
 using std::cout;
 
-FTPClient::FTPClient(string const& host, int PORT = 49152) : ConnectSocket(host, FTP_OPEN_PORT) {
+FTPClient::FTPClient(const std::string& host, int PORT = 49152) : ConnectSocket(host, FTP_OPEN_PORT) {
   _mode = ACTIVE;
   _PORT = PORT;
   cout << "Simple FTP client\n" << "";
@@ -16,19 +16,19 @@ FTPClient::FTPClient(string const& host, int PORT = 49152) : ConnectSocket(host,
   cout << rcvMsg;
 }
 
-unsigned short FTPClient::getResponseCode(string const& responseMessage) {
+unsigned short FTPClient::getResponseCode(const std::string& responseMessage) {
   std::stringstream ss(responseMessage);
   unsigned short responseCode;
   ss >> responseCode;
   return responseCode; 
 }
 
-FTPCommand FTPClient::getFTPCommand(string const& str) {
+FTPCommand FTPClient::getFTPCommand(const std::string& str) {
   if (str == "ls") return LS;
   if (str == "put") return PUT;
 }
 
-std::string FTPClient::send(string const& command, string const& argument) {
+std::string FTPClient::send(const std::string& command, const std::string& argument) {
   if (argument.size() > MAX_FTP_ARGUMENT_SIZE_ALLOWED) {
     cout << "Invalid FTP command argument\n";
     exit(1);
@@ -39,11 +39,11 @@ std::string FTPClient::send(string const& command, string const& argument) {
   return rcvMsg;
 }
 
-void FTPClient::sendUsername(string const& username) {
+void FTPClient::sendUsername(const std::string& username) {
   send("USER", username);
 }
 
-bool FTPClient::sendPassword(string const& password) {
+bool FTPClient::sendPassword(const std::string& password) {
   string responseMessage = send("PASS", password);
   auto responseCode = getResponseCode(responseMessage);
 
@@ -53,7 +53,7 @@ bool FTPClient::sendPassword(string const& password) {
   return true;
 }
 
-bool FTPClient::sendCommand(string const& command) {
+bool FTPClient::sendCommand(const std::string& command) {
   string cmdStr, param;
   std::stringstream ss(command);
   ss >> cmdStr >> param;
@@ -104,6 +104,6 @@ bool FTPClient::sendCommand(string const& command) {
 }
 
 
-void FTPClient::createDataChannel(std::function<void(std::string const&)> fn) { // not implemented yet
+void FTPClient::createDataChannel(std::function<void(const std::string&)> fn) { // not implemented yet
   
 }

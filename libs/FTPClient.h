@@ -22,19 +22,19 @@ enum FTPCommand {
 };
 
 class FTPClient: public ConnectSocket {
-  std::string send(std::string const& command, std::string const& argument);
-  unsigned short getResponseCode(std::string const& responseMessage);
-  FTPCommand getFTPCommand(std::string const& str);
+  std::string send(const std::string& command, const std::string& argument);
+  unsigned short getResponseCode(const std::string& responseMessage);
+  FTPCommand getFTPCommand(const std::string& str);
   int _PORT;
   Mode _mode;
 
   public:
     bool static isValidCommand();
-    void static createDataChannel(std::function<void(std::string const&)> fn); 
-    FTPClient(std::string const& host, int _PORT);
-    void sendUsername(std::string const& username);
-    bool sendPassword(std::string const& password);
-    bool sendCommand(std::string const& command);
+    void static createDataChannel(std::function<void(const std::string&)> fn); 
+    FTPClient(const std::string& host, int _PORT);
+    void sendUsername(const std::string& username);
+    bool sendPassword(const std::string& password);
+    bool sendCommand(const std::string& command);
 };
 
 #endif

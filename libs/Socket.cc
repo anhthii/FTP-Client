@@ -1,4 +1,5 @@
 #include "Socket.h"
+
 // ============================= Base Socket ===========================================
 BaseSocket::BaseSocket(int socketFd) : socketFd(socketFd) {
   if (socketFd == invalidSocketFd) {
@@ -27,7 +28,7 @@ std::string DataSocket::receiveMessage() {
   return std::string(recvMsg);
 }
 
-void DataSocket::sendMessage(std::string const& msg) {
+void DataSocket::sendMessage(const std::string& msg) {
   char const* buffer = msg.c_str();
   std::size_t size = msg.size();
   std::size_t dataWritten = 0;
@@ -82,7 +83,7 @@ DataSocket HostSocket::accept() {
 }
 
 // ============================= Connect Socket ===========================================
-ConnectSocket::ConnectSocket(std::string const& host, unsigned int port) : DataSocket(::socket(AF_INET, SOCK_STREAM, 0)) {
+ConnectSocket::ConnectSocket(const std::string& host, unsigned int port) : DataSocket(::socket(AF_INET, SOCK_STREAM, 0)) {
   _host = ::gethostbyname(host.c_str());
   if (_host == NULL) {
     errno = ECONNREFUSED;
@@ -102,23 +103,23 @@ ConnectSocket::ConnectSocket(std::string const& host, unsigned int port) : DataS
 // ============================= Log ===========================================
 using namespace ErrorLog;
 
-void ErrorLog::error(std::string const& msg) {
+void ErrorLog::error(const std::string& msg) {
   std::cout << msg << ": " << std::strerror(errno) << '\n';
   exit(EXIT_FAILURE);
 }
 
-void ErrorLog::BaseSocketError(std::string const& msg) {
+void ErrorLog::BaseSocketError(const std::string& msg) {
   error("[BaseSocket] " + msg);
 }
 
-void ErrorLog::DataSocketError(std::string const& msg) {
+void ErrorLog::DataSocketError(const std::string& msg) {
   error("[DataSocket] " + msg);
 }
 
-void ErrorLog::HostSocketError(std::string const& msg) {
+void ErrorLog::HostSocketError(const std::string& msg) {
    error("[HostSocket] " + msg);
 }
 
-void ErrorLog::ConnectSocketError(std::string const& msg) {
+void ErrorLog::ConnectSocketError(const std::string& msg) {
    error("[ConnectSocket] " + msg);
 }

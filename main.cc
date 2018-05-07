@@ -3,12 +3,14 @@
 #include <iostream>
 
 int main(int argc, char*argv[]) {
+  (void) argc;
   // temporary code for development purpose
   if(argv[1][0] == '\0') {
     std::cout << "Port is not specified\n";
     std::cout << "Usage: ftp <PORT>\n";
     exit(1);
   }
+  
   int PORT = std::stoi(argv[1]); // port for data channel
   //
 
