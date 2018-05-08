@@ -1,15 +1,13 @@
 #include "FTPClient.h"
 #include <sstream>
 
-#define FTP_OPEN_PORT 21
 #define MAX_FTP_ARGUMENT_SIZE_ALLOWED 500
 
 using std::string;
 using std::cout;
 
-FTPClient::FTPClient(const std::string& host, int PORT = 49152) : ConnectSocket(host, FTP_OPEN_PORT) {
+FTPClient::FTPClient(const std::string& host, int port /* = FTP_OPEN_PORT */) : ConnectSocket(host, port) {
   _mode = ACTIVE;
-  _PORT = PORT;
   cout << "Simple FTP client\n" << "";
   cout << "Connection established, waiting for welcome message...\n";
   string rcvMsg = receiveMessage();
@@ -33,6 +31,7 @@ std::string FTPClient::send(const std::string& command, const std::string& argum
     cout << "Invalid FTP command argument\n";
     exit(1);
   }
+  std::cout << command << " " << argument << "\r\n";
   sendMessage(command + " " + argument + "\r\n");
   string rcvMsg = receiveMessage();
   cout << rcvMsg;
@@ -58,9 +57,20 @@ bool FTPClient::sendCommand(const std::string& command) {
   std::stringstream ss(command);
   ss >> cmdStr >> param;
 
+  HostSocket host(_myAddr);
+  const char* addr = (char*)&host.getAddr();
+  const char* port = (char*)&host.getPort();
   if (_mode == ACTIVE) {
     std::stringstream ss;
-    ss << "EPRT |1|127.0.0.1|" << _PORT << "|\r\n";
+    ss << "PORT " 
+       << ((int)addr[0] & 0xff) << ","
+       << ((int)addr[1] & 0xff) << ","
+       << ((int)addr[2] & 0xff) << ","
+       << ((int)addr[3] & 0xff) << ","
+       << ((int)port[0] & 0xff) << ","
+       << ((int)port[1] & 0xff)
+       << "\r\n";
+    std::cout << ss.str();
     sendMessage(ss.str());
     // clear file descriptor that containing non-use reponse message after sending port command
     receiveMessage(); 
@@ -68,9 +78,8 @@ bool FTPClient::sendCommand(const std::string& command) {
 
   auto cmd = getFTPCommand(cmdStr);
   switch (cmd) {
-    case LS: {
-      std::thread t([this] {
-        HostSocket host(_PORT);
+  case LS: {
+      std::thread t([&] {
         DataSocket ds = host.accept();
         string data = ds.receiveMessage();
         cout << data;
@@ -91,7 +100,20 @@ bool FTPClient::sendCommand(const std::string& command) {
     break;
 
   case PUT: {
-
+      sendMessage("TYPE I\r\n"); // switch to binary mode
+      string rcvMsg = receiveMessage();
+      cout << rcvMsg; 
+      std::thread t([&] {
+        DataSocket ds = host.accept();
+        if (!ds.sendFile(param)) {
+          std::cerr << "Error sending file!\n";
+        }
+          
+      });
+      send("STOR", param);
+      t.join();
+      rcvMsg = receiveMessage();
+      cout << rcvMsg;
   }
     break;
 
@@ -99,7 +121,6 @@ bool FTPClient::sendCommand(const std::string& command) {
     return false;
   }
 
-  _PORT++; // increase port by one for later command request
   return true;
 }
 

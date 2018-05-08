@@ -31,20 +31,27 @@ class DataSocket : public BaseSocket {
     DataSocket(int socketFd) : BaseSocket(socketFd) {}
     std::string receiveMessage();
     void sendMessage(const std::string& msg);
+    bool sendFile(const std::string& file);
 };
 
 class HostSocket : public BaseSocket {
-  struct sockaddr_in _host_addr;
+  sockaddr_in _host_addr;
+  unsigned short _port;
+  uint32_t _addr;
 
   public:
-    HostSocket(unsigned int port);
+    HostSocket(sockaddr_in myAddr, unsigned short port = 0);
+    const unsigned short& getPort() { return _port; }
+    const uint32_t& getAddr() {return _addr; }
     DataSocket accept();
 };
 
 class ConnectSocket : public DataSocket {
-  struct sockaddr_in _host_addr;
-  struct hostent *_host;
+  sockaddr_in _host_addr;
+  hostent* _host;
 
+  protected:
+    sockaddr_in _myAddr;
   public:
     ConnectSocket(const std::string& host, unsigned int port);
 };
