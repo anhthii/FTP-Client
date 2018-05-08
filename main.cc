@@ -3,16 +3,9 @@
 #include <iostream>
 
 int main(int argc, char*argv[]) {
-  // temporary code for development purpose
-  if(argv[1][0] == '\0') {
-    std::cout << "Port is not specified\n";
-    std::cout << "Usage: ftp <PORT>\n";
-    exit(1);
-  }
-  int PORT = std::stoi(argv[1]); // port for data channel
-  //
+  (void) argc;
 
-  FTPClient ftpClient("127.0.0.1", PORT);
+  FTPClient ftpClient("127.0.0.1");
   std::string userName, password;
   std::cout << "Username: ";
   std::getline(std::cin, userName); 
@@ -22,7 +15,7 @@ int main(int argc, char*argv[]) {
   bool resp = ftpClient.sendPassword(password);
   if (resp == false) {
     std::cout << "Login failed.\n";
-    exit(1);
+    return EXIT_FAILURE;
   }
 
   while (1) {

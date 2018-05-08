@@ -1,4 +1,6 @@
 #include "Socket.h"
+#include <cstdio>
+
 // ============================= Base Socket ===========================================
 BaseSocket::BaseSocket(int socketFd) : socketFd(socketFd) {
   if (socketFd == invalidSocketFd) {
@@ -27,7 +29,7 @@ std::string DataSocket::receiveMessage() {
   return std::string(recvMsg);
 }
 
-void DataSocket::sendMessage(std::string const& msg) {
+void DataSocket::sendMessage(const std::string& msg) {
   char const* buffer = msg.c_str();
   std::size_t size = msg.size();
   std::size_t dataWritten = 0;
@@ -54,21 +56,57 @@ void DataSocket::sendMessage(std::string const& msg) {
   }  
 }
 
+bool DataSocket::sendFile(const std::string& file) {
+  FILE* fin = std::fopen(file.c_str(), "rb");
+  if (!fin) {
+    // todo
+    std::cout << "ERROR OPEN FILE!";
+    return false;
+  }
+
+  ssize_t bytesRead = 0, r;
+  char buffer[MAX_BUFF_SIZE];
+  while ((r = read(fileno(fin), buffer, MAX_BUFF_SIZE)) > 0) {
+    bytesRead += r;
+    ssize_t bytesWritten = 0, w;
+    while (r > 0 && (w = write(getSocketFd(), buffer + bytesWritten, r)) > 0) {
+      bytesWritten +=  w;
+      r -= w;
+    }
+    if (w < 0) {
+      // todo handle error
+    }
+  }
+  fclose(fin);
+  return true;
+}
+
 // ============================= Host Socket ===========================================
-HostSocket::HostSocket(unsigned int port) : BaseSocket(::socket(AF_INET, SOCK_STREAM, 0)) {
+HostSocket::HostSocket(sockaddr_in myAddr, unsigned short port /* = 0 */) : BaseSocket(::socket(AF_INET, SOCK_STREAM, 0)) {
   const int MAX_CONNECTIONS_ALLOWED = 1; 
-  ::memset((char*) &_host_addr, 0, sizeof(_host_addr));
-  _host_addr.sin_family = AF_INET;
-  _host_addr.sin_addr.s_addr = INADDR_ANY;
+  /* ::memset((char*)&_host_addr, 0, sizeof(_host_addr)); */
+  /* _host_addr.sin_family = AF_INET; */
+  /* _host_addr.sin_addr.s_addr = INADDR_ANY; */
+  _host_addr = myAddr;
   _host_addr.sin_port = htons(port);
 
-  if (::bind(getSocketFd(), (struct sockaddr *) &_host_addr, sizeof(_host_addr)) != 0) {  
+  if (::bind(getSocketFd(), (sockaddr *)&_host_addr, sizeof(_host_addr)) != 0) {  
+    close();
     ErrorLog::HostSocketError("Error on binding socket");
   }
 
   if (::listen(getSocketFd(), MAX_CONNECTIONS_ALLOWED) != 0) {
+    close();
     ErrorLog::HostSocketError("Error on listening");
   }
+
+  socklen_t len = sizeof(myAddr);
+  if (::getsockname(getSocketFd(), (sockaddr*)&myAddr, &len) < 0) {
+    close();
+    ErrorLog::ConnectSocketError("getsockname");
+  }
+  _port = myAddr.sin_port;
+  _addr = myAddr.sin_addr.s_addr;
 }
 
 DataSocket HostSocket::accept() {
@@ -82,7 +120,7 @@ DataSocket HostSocket::accept() {
 }
 
 // ============================= Connect Socket ===========================================
-ConnectSocket::ConnectSocket(std::string const& host, unsigned int port) : DataSocket(::socket(AF_INET, SOCK_STREAM, 0)) {
+ConnectSocket::ConnectSocket(const std::string& host, unsigned int port) : DataSocket(::socket(AF_INET, SOCK_STREAM, 0)) {
   _host = ::gethostbyname(host.c_str());
   if (_host == NULL) {
     errno = ECONNREFUSED;
@@ -94,31 +132,38 @@ ConnectSocket::ConnectSocket(std::string const& host, unsigned int port) : DataS
   ::memcpy((char*) &_host_addr.sin_addr.s_addr, (char*) _host->h_addr , _host->h_length);
   _host_addr.sin_port = htons(port);
 
-  if (::connect(getSocketFd(), (struct sockaddr*) &_host_addr, sizeof(_host_addr)) != 0) {
+  if (::connect(getSocketFd(), (sockaddr*) &_host_addr, sizeof(_host_addr)) != 0) {
+    close();
     ErrorLog::ConnectSocketError("Can't connect to host");
+  }
+
+  socklen_t len = sizeof(_myAddr);
+  if (::getsockname(getSocketFd(), (sockaddr*)&_myAddr, &len) < 0) {
+    close();
+    ErrorLog::ConnectSocketError("getsockname");
   }
 }
 
 // ============================= Log ===========================================
 using namespace ErrorLog;
 
-void ErrorLog::error(std::string const& msg) {
+void ErrorLog::error(const std::string& msg) {
   std::cout << msg << ": " << std::strerror(errno) << '\n';
   exit(EXIT_FAILURE);
 }
 
-void ErrorLog::BaseSocketError(std::string const& msg) {
+void ErrorLog::BaseSocketError(const std::string& msg) {
   error("[BaseSocket] " + msg);
 }
 
-void ErrorLog::DataSocketError(std::string const& msg) {
+void ErrorLog::DataSocketError(const std::string& msg) {
   error("[DataSocket] " + msg);
 }
 
-void ErrorLog::HostSocketError(std::string const& msg) {
+void ErrorLog::HostSocketError(const std::string& msg) {
    error("[HostSocket] " + msg);
 }
 
-void ErrorLog::ConnectSocketError(std::string const& msg) {
+void ErrorLog::ConnectSocketError(const std::string& msg) {
    error("[ConnectSocket] " + msg);
 }
