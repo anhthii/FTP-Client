@@ -181,7 +181,7 @@ using namespace ErrorLog;
 
 void ErrorLog::error(const std::string& msg) {
   std::cout << msg << ": " << std::strerror(errno) << '\n';
-  exit(EXIT_FAILURE);
+  // exit(EXIT_FAILURE);
 }
 
 void ErrorLog::BaseSocketError(const std::string& msg) {
@@ -199,3 +199,4 @@ void ErrorLog::HostSocketError(const std::string& msg) {
 void ErrorLog::ConnectSocketError(const std::string& msg) {
    error("[ConnectSocket] " + msg);
 }
+

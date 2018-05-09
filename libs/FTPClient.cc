@@ -2,6 +2,7 @@
 #include <sstream>
 
 #define MAX_FTP_ARGUMENT_SIZE_ALLOWED 500
+#define MAX_PATH_SIZE 256
 
 using std::string;
 using std::cout;
@@ -25,6 +26,9 @@ FTPCommand FTPClient::getFTPCommand(const std::string& str) {
   if (str == "ls") return LS;
   if (str == "put") return PUT;
   if (str == "get") return GET;
+  if (str == "cd") return CD;
+  if (str == "lcd") return LCD;
+  if (str == "delete") return DELE;
 }
 
 std::string FTPClient::send(const std::string& command, const std::string& argument) {
@@ -134,6 +138,28 @@ bool FTPClient::sendCommand(const std::string& command) {
     cout << rcvMsg;
   }
 
+  case CD: {
+    send("CWD", param);
+  }
+    break;
+
+  case LCD: {
+    string path = !param.empty() ? param : ".";
+    if (chdir(path.c_str()) == 0) {
+      cout << "Local directory now: ";
+      char currPath[MAX_PATH_SIZE];
+      getcwd(currPath, MAX_PATH_SIZE);
+      cout << currPath << "\n";
+    } else {
+      ErrorLog::error("local: " + path);
+    }
+  }
+    break;
+  
+  case DELE: {
+    send("DELE", param);
+  }
+    break;
   default:
     return false;
   }
@@ -141,7 +167,7 @@ bool FTPClient::sendCommand(const std::string& command) {
   return true;
 }
 
-
 void FTPClient::createDataChannel(std::function<void(const std::string&)> fn) { // not implemented yet
   
 }
+
