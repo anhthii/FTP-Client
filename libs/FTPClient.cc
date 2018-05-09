@@ -24,6 +24,7 @@ unsigned short FTPClient::getResponseCode(const std::string& responseMessage) {
 FTPCommand FTPClient::getFTPCommand(const std::string& str) {
   if (str == "ls") return LS;
   if (str == "put") return PUT;
+  if (str == "get") return GET;
 }
 
 std::string FTPClient::send(const std::string& command, const std::string& argument) {
@@ -79,43 +80,59 @@ bool FTPClient::sendCommand(const std::string& command) {
   auto cmd = getFTPCommand(cmdStr);
   switch (cmd) {
   case LS: {
-      std::thread t([&] {
-        DataSocket ds = host.accept();
-        string data = ds.receiveMessage();
-        cout << data;
-      });
+    std::thread t([&] {
+      DataSocket ds = host.accept();
+      string data = ds.receiveMessage();
+      cout << data;
+    });
 
-      if (param.empty()) {
-        sendMessage("LIST\r\n");
-        string rcvMsg = receiveMessage();
-        cout << rcvMsg; 
-      } else {
-        send("LIST", param);
-      }
+    if (param.empty()) {
+      sendMessage("LIST\r\n");
+      string rcvMsg = receiveMessage();
+      cout << rcvMsg; 
+    } else {
+      send("LIST", param);
+    }
 
-      t.join();
-      string closeMsg = receiveMessage();
-      cout << closeMsg;
+    t.join();
+    string closeMsg = receiveMessage();
+    cout << closeMsg;
   }
     break;
 
   case PUT: {
-      sendMessage("TYPE I\r\n"); // switch to binary mode
-      string rcvMsg = receiveMessage();
-      cout << rcvMsg; 
-      std::thread t([&] {
-        DataSocket ds = host.accept();
-        if (!ds.sendFile(param)) {
-          std::cerr << "Error sending file!\n";
-        }
-          
-      });
-      send("STOR", param);
-      t.join();
-      rcvMsg = receiveMessage();
-      cout << rcvMsg;
+    /* sendMessage("TYPE I\r\n"); // switch to binary mode */
+    /* string rcvMsg = receiveMessage(); */
+    /* cout << rcvMsg; */ 
+    std::thread t([&] {
+      DataSocket ds = host.accept();
+      if (!ds.sendFile(param)) {
+        std::cerr << "Error sending file!\n";
+      }
+        
+    });
+    send("STOR", param);
+    // check for error before join
+    t.join();
+    std::string rcvMsg = receiveMessage();
+    cout << rcvMsg;
   }
     break;
+
+  case GET: {
+    std::thread t([&] {
+      DataSocket ds = host.accept();
+      if (!ds.receiveFile(param)) {
+        std::cerr << "Error receiving file!\n";
+      }
+        
+    });
+    send("RETR", param);
+    // check for error before join
+    t.join();
+    std::string rcvMsg = receiveMessage();
+    cout << rcvMsg;
+  }
 
   default:
     return false;

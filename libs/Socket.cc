@@ -57,7 +57,7 @@ void DataSocket::sendMessage(const std::string& msg) {
 }
 
 bool DataSocket::sendFile(const std::string& file) {
-  FILE* fin = std::fopen(file.c_str(), "rb");
+  FILE* fin = std::fopen(file.c_str(), "r");
   if (!fin) {
     // todo
     std::cout << "ERROR OPEN FILE!";
@@ -77,7 +77,39 @@ bool DataSocket::sendFile(const std::string& file) {
       // todo handle error
     }
   }
+  if (r < 0) {
+    // todo handle error
+  }
+
   fclose(fin);
+  return true;
+}
+
+bool DataSocket::receiveFile(const std::string& file) {
+  FILE* fout = std::fopen(file.c_str(), "w");
+  if (!fout) {
+    std::cout << "ERROR OPEN FILE RECV";
+    return false;
+  }
+
+  ssize_t bytesRead = 0, r;
+  char buffer[MAX_BUFF_SIZE];
+  while ((r= read(getSocketFd(), buffer, MAX_BUFF_SIZE)) > 0) {
+    bytesRead += r;
+    ssize_t bytesWritten = 0, w;
+    while (r > 0 && (w = write(fileno(fout), buffer + bytesWritten, r)) > 0) {
+      bytesWritten += w;
+      r -= w;
+    }
+    if (w < 0) {
+      // todo handle error
+    }
+  }
+  if (r < 0) {
+    // todo handle error
+  }
+
+  fclose(fout);
   return true;
 }
 

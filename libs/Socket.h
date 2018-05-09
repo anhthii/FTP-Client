@@ -32,6 +32,7 @@ class DataSocket : public BaseSocket {
     std::string receiveMessage();
     void sendMessage(const std::string& msg);
     bool sendFile(const std::string& file);
+    bool receiveFile(const std::string& file);
 };
 
 class HostSocket : public BaseSocket {
