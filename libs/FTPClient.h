@@ -22,6 +22,9 @@ enum Mode {
 enum FTPCommand {
   LS,
   PUT,
+  CD,
+  LCD,
+  DELE,
 };
 
 class FTPClient: public ConnectSocket {

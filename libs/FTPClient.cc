@@ -2,6 +2,7 @@
 #include <sstream>
 
 #define MAX_FTP_ARGUMENT_SIZE_ALLOWED 500
+#define MAX_PATH_SIZE 512
 
 using std::string;
 using std::cout;
@@ -24,6 +25,9 @@ unsigned short FTPClient::getResponseCode(const std::string& responseMessage) {
 FTPCommand FTPClient::getFTPCommand(const std::string& str) {
   if (str == "ls") return LS;
   if (str == "put") return PUT;
+  if (str == "cd") return CD;
+  if (str == "lcd") return LCD;
+  if (str == "delete") return DELE;
 }
 
 std::string FTPClient::send(const std::string& command, const std::string& argument) {
@@ -31,7 +35,7 @@ std::string FTPClient::send(const std::string& command, const std::string& argum
     cout << "Invalid FTP command argument\n";
     exit(1);
   }
-  std::cout << command << " " << argument << "\r\n";
+  //std::cout << command << " " << argument << "\r\n";
   sendMessage(command + " " + argument + "\r\n");
   string rcvMsg = receiveMessage();
   cout << rcvMsg;
@@ -60,7 +64,11 @@ bool FTPClient::sendCommand(const std::string& command) {
   HostSocket host(_myAddr);
   const char* addr = (char*)&host.getAddr();
   const char* port = (char*)&host.getPort();
-  if (_mode == ACTIVE) {
+
+  auto cmd = getFTPCommand(cmdStr);
+  if (_mode == ACTIVE &&
+    (cmd == LS || cmd == PUT)
+  ) {
     std::stringstream ss;
     ss << "PORT " 
        << ((int)addr[0] & 0xff) << ","
@@ -76,7 +84,6 @@ bool FTPClient::sendCommand(const std::string& command) {
     receiveMessage(); 
   }
 
-  auto cmd = getFTPCommand(cmdStr);
   switch (cmd) {
   case LS: {
       std::thread t([&] {
@@ -84,7 +91,7 @@ bool FTPClient::sendCommand(const std::string& command) {
         string data = ds.receiveMessage();
         cout << data;
       });
-
+        
       if (param.empty()) {
         sendMessage("LIST\r\n");
         string rcvMsg = receiveMessage();
@@ -108,12 +115,35 @@ bool FTPClient::sendCommand(const std::string& command) {
         if (!ds.sendFile(param)) {
           std::cerr << "Error sending file!\n";
         }
-          
+
       });
       send("STOR", param);
       t.join();
       rcvMsg = receiveMessage();
       cout << rcvMsg;
+  }
+    break;
+  
+  case CD: {
+    send("CWD", param);
+  }
+    break;
+
+  case LCD: {
+    string path = !param.empty() ? param : ".";
+    if (chdir(path.c_str()) == 0) {
+      cout << "Local directory now: ";
+      char currPath[MAX_PATH_SIZE];
+      getcwd(currPath, MAX_PATH_SIZE);
+      cout << currPath << "\n";
+    } else {
+      ErrorLog::error("local: " + path);
+    }
+  }
+    break;
+  
+  case DELE: {
+    send("DELE", param);
   }
     break;
 
