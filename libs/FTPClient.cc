@@ -11,7 +11,7 @@ FTPClient::FTPClient(const std::string& host, int port /* = FTP_OPEN_PORT */) : 
   _mode = ACTIVE;
   cout << "Simple FTP client\n" << "";
   cout << "Connection established, waiting for welcome message...\n";
-  string rcvMsg = receiveMessage();
+  std::string rcvMsg = receiveMessage();
   cout << rcvMsg;
 }
 
@@ -39,7 +39,7 @@ std::string FTPClient::send(const std::string& command, const std::string& argum
   }
   std::cout << command << " " << argument << "\r\n";
   sendMessage(command + " " + argument + "\r\n");
-  string rcvMsg = receiveMessage();
+  std::string rcvMsg = receiveMessage();
   if (printResponse == true) {
     cout << rcvMsg;
   }
@@ -51,7 +51,7 @@ void FTPClient::sendUsername(const std::string& username) {
 }
 
 bool FTPClient::sendPassword(const std::string& password) {
-  string responseMessage = send("PASS", password);
+  std::string responseMessage = send("PASS", password);
   auto responseCode = getResponseCode(responseMessage);
 
   if (responseCode != FTPResponseCode::LOGGED_ON) {
@@ -80,8 +80,29 @@ std::shared_ptr<HostSocket> FTPClient::openPort() {
   return host;
 }
 
+void FTPClient::expandGlob(const std::string& file, std::vector<std::string>& files) {
+  auto host = openPort();
+  std::thread t([&] {
+    DataSocket ds = host->accept();
+    std::string data = ds.receiveMessage();
+    if (data.empty()) {
+      cout << "No such file: " << file << "\n";
+    } else {
+      std::stringstream ss(data);
+      std::string line;
+      while (std::getline(ss, line)) {
+        files.push_back(line);
+      }
+    }
+  });
+  send("NLST", file, false);
+  t.join();
+  
+  std::cout << receiveMessage();
+}
+
 bool FTPClient::sendCommand(const std::string& command) {
-  string cmdStr, param;
+  std::string cmdStr, param;
   std::stringstream ss(command);
   ss >> cmdStr >> std::ws;
   std::getline(ss, param);
@@ -92,27 +113,27 @@ bool FTPClient::sendCommand(const std::string& command) {
     auto host = openPort();
     std::thread t([&] {
       DataSocket ds = host->accept();
-      string data = ds.receiveMessage();
+      std::string data = ds.receiveMessage();
       cout << data;
     });
 
     if (param.empty()) {
       sendMessage("LIST\r\n");
-      string rcvMsg = receiveMessage();
+      std::string rcvMsg = receiveMessage();
       cout << rcvMsg; 
     } else {
       send("LIST", param);
     }
 
     t.join();
-    string closeMsg = receiveMessage();
+    std::string closeMsg = receiveMessage();
     cout << closeMsg;
   }
     break;
 
   case PUT: {
     /* sendMessage("TYPE I\r\n"); // switch to binary mode */
-    /* string rcvMsg = receiveMessage(); */
+    /* std::string rcvMsg = receiveMessage(); */
     /* cout << rcvMsg; */ 
     auto host = openPort();
     std::thread t([&] {
@@ -152,7 +173,7 @@ bool FTPClient::sendCommand(const std::string& command) {
     break;
 
   case LCD: {
-    string path = !param.empty() ? param : ".";
+    std::string path = !param.empty() ? param : ".";
     if (chdir(path.c_str()) == 0) {
       cout << "Local directory now: ";
       char currPath[MAX_PATH_SIZE];
@@ -169,34 +190,21 @@ bool FTPClient::sendCommand(const std::string& command) {
   }
 
   case MDELE: {
-    // splitting string by space
-    std::vector<string> files;
+    // splitting std::string by space
+    std::vector<std::string> files;
     std::istringstream iss(param);
-    for (string s; iss >> s; ) {
-      files.push_back(s);
+    for (std::string s; iss >> s; ) {
+      expandGlob(s, files);
     }
     for(auto& file: files) {
-      auto host = openPort();
-      std::thread t([&] {
-        DataSocket ds = host->accept();
-        string data = ds.receiveMessage();
-        if (data.empty()) {
-          cout << "No such file: " << file << "\n";
-        } else {
-          string yesOrNo;
-          cout << "mdelete " << file << "?";
-          std::cin >> yesOrNo;
-          std::cin.ignore();
-          if (yesOrNo == "n" || yesOrNo == "no") {
-            // ignore
-          } else {
-            send("DELE", file, true);
-          }
-        }
-      });
-      send("NLST", file, false);
-      t.join();
-      DataSocket::clearFd();
+      std::string yesOrNo;
+      cout << "mdelete " << file << "?";
+      std::getline(std::cin, yesOrNo);
+      if (yesOrNo.front() == 'n' || yesOrNo.front() == 'N') {
+        // ignore
+      } else {
+        send("DELE", file, true);
+      }
     }
   }
 

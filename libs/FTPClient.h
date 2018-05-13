@@ -7,6 +7,8 @@
 #include <thread>
 #include <functional>
 #include <memory>
+#include <vector>
+
 #define FTP_OPEN_PORT 21
 
 enum FTPResponseCode {
@@ -43,6 +45,7 @@ class FTPClient: public ConnectSocket {
     void sendUsername(const std::string& username);
     bool sendPassword(const std::string& password);
     bool sendCommand(const std::string& command);
+    void expandGlob(const std::string& file, std::vector<std::string>& files);
 };
 
 #endif
