@@ -30,6 +30,7 @@ class DataSocket : public BaseSocket {
     const static int MAX_BUFF_SIZE = 1024; 
     DataSocket(int socketFd) : BaseSocket(socketFd) {}
     std::string receiveMessage();
+    void clearFd(); // clear file descriptor
     void sendMessage(const std::string& msg);
     bool sendFile(const std::string& file);
     bool receiveFile(const std::string& file);

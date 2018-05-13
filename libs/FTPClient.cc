@@ -1,6 +1,6 @@
 #include "FTPClient.h"
 #include <sstream>
-
+#include <vector>
 #define MAX_FTP_ARGUMENT_SIZE_ALLOWED 500
 #define MAX_PATH_SIZE 256
 
@@ -29,9 +29,10 @@ FTPCommand FTPClient::getFTPCommand(const std::string& str) {
   if (str == "cd") return CD;
   if (str == "lcd") return LCD;
   if (str == "delete") return DELE;
+  if (str == "mdelete") return MDELE;
 }
 
-std::string FTPClient::send(const std::string& command, const std::string& argument) {
+std::string FTPClient::send(const std::string& command, const std::string& argument, bool printResponse) {
   if (argument.size() > MAX_FTP_ARGUMENT_SIZE_ALLOWED) {
     cout << "Invalid FTP command argument\n";
     exit(1);
@@ -39,7 +40,9 @@ std::string FTPClient::send(const std::string& command, const std::string& argum
   std::cout << command << " " << argument << "\r\n";
   sendMessage(command + " " + argument + "\r\n");
   string rcvMsg = receiveMessage();
-  cout << rcvMsg;
+  if (printResponse == true) {
+    cout << rcvMsg;
+  }
   return rcvMsg;
 }
 
@@ -57,35 +60,38 @@ bool FTPClient::sendPassword(const std::string& password) {
   return true;
 }
 
+std::shared_ptr<HostSocket> FTPClient::openPort() {
+  auto host = std::make_shared<HostSocket>(_myAddr);
+  const char* addr = (char*)&host->getAddr();
+  const char* port = (char*)&host->getPort();
+  std::stringstream ss;
+  ss << "PORT " 
+      << ((int)addr[0] & 0xff) << ","
+      << ((int)addr[1] & 0xff) << ","
+      << ((int)addr[2] & 0xff) << ","
+      << ((int)addr[3] & 0xff) << ","
+      << ((int)port[0] & 0xff) << ","
+      << ((int)port[1] & 0xff)
+      << "\r\n";
+  // std::cout << ss.str();
+  sendMessage(ss.str());
+  // clear file descriptor that containing non-use reponse message after sending port command
+  DataSocket::clearFd();
+  return host;
+}
+
 bool FTPClient::sendCommand(const std::string& command) {
   string cmdStr, param;
   std::stringstream ss(command);
-  ss >> cmdStr >> param;
-
-  HostSocket host(_myAddr);
-  const char* addr = (char*)&host.getAddr();
-  const char* port = (char*)&host.getPort();
-  if (_mode == ACTIVE) {
-    std::stringstream ss;
-    ss << "PORT " 
-       << ((int)addr[0] & 0xff) << ","
-       << ((int)addr[1] & 0xff) << ","
-       << ((int)addr[2] & 0xff) << ","
-       << ((int)addr[3] & 0xff) << ","
-       << ((int)port[0] & 0xff) << ","
-       << ((int)port[1] & 0xff)
-       << "\r\n";
-    std::cout << ss.str();
-    sendMessage(ss.str());
-    // clear file descriptor that containing non-use reponse message after sending port command
-    receiveMessage(); 
-  }
-
+  ss >> cmdStr >> std::ws;
+  std::getline(ss, param);
+  
   auto cmd = getFTPCommand(cmdStr);
   switch (cmd) {
   case LS: {
+    auto host = openPort();
     std::thread t([&] {
-      DataSocket ds = host.accept();
+      DataSocket ds = host->accept();
       string data = ds.receiveMessage();
       cout << data;
     });
@@ -108,8 +114,9 @@ bool FTPClient::sendCommand(const std::string& command) {
     /* sendMessage("TYPE I\r\n"); // switch to binary mode */
     /* string rcvMsg = receiveMessage(); */
     /* cout << rcvMsg; */ 
+    auto host = openPort();
     std::thread t([&] {
-      DataSocket ds = host.accept();
+      DataSocket ds = host->accept();
       if (!ds.sendFile(param)) {
         std::cerr << "Error sending file!\n";
       }
@@ -124,8 +131,9 @@ bool FTPClient::sendCommand(const std::string& command) {
     break;
 
   case GET: {
+    auto host = openPort();
     std::thread t([&] {
-      DataSocket ds = host.accept();
+      DataSocket ds = host->accept();
       if (!ds.receiveFile(param)) {
         std::cerr << "Error receiving file!\n";
       }
@@ -159,6 +167,39 @@ bool FTPClient::sendCommand(const std::string& command) {
   case DELE: {
     send("DELE", param);
   }
+
+  case MDELE: {
+    // splitting string by space
+    std::vector<string> files;
+    std::istringstream iss(param);
+    for (string s; iss >> s; ) {
+      files.push_back(s);
+    }
+    for(auto& file: files) {
+      auto host = openPort();
+      std::thread t([&] {
+        DataSocket ds = host->accept();
+        string data = ds.receiveMessage();
+        if (data.empty()) {
+          cout << "No such file: " << file << "\n";
+        } else {
+          string yesOrNo;
+          cout << "mdelete " << file << "?";
+          std::cin >> yesOrNo;
+          std::cin.ignore();
+          if (yesOrNo == "n" || yesOrNo == "no") {
+            // ignore
+          } else {
+            send("DELE", file, true);
+          }
+        }
+      });
+      send("NLST", file, false);
+      t.join();
+      DataSocket::clearFd();
+    }
+  }
+
     break;
   default:
     return false;

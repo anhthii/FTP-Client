@@ -8,11 +8,11 @@ int main(int argc, char*argv[]) {
   FTPClient ftpClient("127.0.0.1");
   std::string userName, password;
   std::cout << "Username: ";
-  std::getline(std::cin, userName); 
-  ftpClient.sendUsername(userName);
+  //std::getline(std::cin, userName); 
+  ftpClient.sendUsername("teddybear");
   std::cout << "Password: ";
-  std::getline(std::cin, password);
-  bool resp = ftpClient.sendPassword(password);
+  //std::getline(std::cin, password);
+  bool resp = ftpClient.sendPassword("anaconda_456");
   if (resp == false) {
     std::cout << "Login failed.\n";
     return EXIT_FAILURE;

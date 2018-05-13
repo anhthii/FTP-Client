@@ -29,6 +29,10 @@ std::string DataSocket::receiveMessage() {
   return std::string(recvMsg);
 }
 
+void DataSocket::clearFd() {
+  receiveMessage();
+}
+
 void DataSocket::sendMessage(const std::string& msg) {
   char const* buffer = msg.c_str();
   std::size_t size = msg.size();

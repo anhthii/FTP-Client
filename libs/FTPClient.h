@@ -6,7 +6,7 @@
 #include <iostream>
 #include <thread>
 #include <functional>
-
+#include <memory>
 #define FTP_OPEN_PORT 21
 
 enum FTPResponseCode {
@@ -25,13 +25,15 @@ enum FTPCommand {
   GET,
   CD,
   LCD,
-  DELE
+  DELE,
+  MDELE
 };
 
 class FTPClient: public ConnectSocket {
-  std::string send(const std::string& command, const std::string& argument);
+  std::string send(const std::string& command, const std::string& argument, bool printResponse = true);
   unsigned short getResponseCode(const std::string& responseMessage);
   FTPCommand getFTPCommand(const std::string& str);
+  std::shared_ptr<HostSocket> openPort();
   Mode _mode;
 
   public:
