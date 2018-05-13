@@ -187,16 +187,17 @@ bool FTPClient::sendCommand(const std::string& command) {
           cout << "mdelete " << file << "?";
           std::cin >> yesOrNo;
           std::cin.ignore();
+          DataSocket::clearFd();
           if (yesOrNo == "n" || yesOrNo == "no") {
             // ignore
+            
           } else {
-            send("DELE", file, true);
+            send("DELE", file);
           }
         }
       });
       send("NLST", file, false);
       t.join();
-      DataSocket::clearFd();
     }
   }
 
