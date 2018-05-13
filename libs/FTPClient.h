@@ -24,7 +24,9 @@ enum Mode {
 enum FTPCommand {
   LS,
   PUT,
+  MPUT,
   GET,
+  MGET,
   CD,
   LCD,
   DELE,

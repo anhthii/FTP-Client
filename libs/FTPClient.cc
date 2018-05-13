@@ -25,7 +25,9 @@ unsigned short FTPClient::getResponseCode(const std::string& responseMessage) {
 FTPCommand FTPClient::getFTPCommand(const std::string& str) {
   if (str == "ls" || str == "dir") return LS;
   if (str == "put") return PUT;
+  if (str == "mput") return MPUT;
   if (str == "get") return GET;
+  if (str == "mget") return MGET;
   if (str == "cd") return CD;
   if (str == "lcd") return LCD;
   if (str == "delete") return DELE;
@@ -155,6 +157,37 @@ bool FTPClient::sendCommand(const std::string& command) {
   }
     break;
 
+  case MPUT: {
+      std::vector<std::string> files;
+      std::istringstream iss(param);
+      for (std::string s; iss >> s; ) {
+        files.push_back(s);
+      }
+      for(auto& file: files) {
+        std::string yesOrNo;
+        std::cout << "mget " << file << "?";
+        std::getline(std::cin, yesOrNo);
+        if (yesOrNo.front() == 'n' || yesOrNo.front() == 'N') {
+          // ignore
+        } else {
+          auto host = openPort();
+          std::thread t([&] {
+            DataSocket ds = host->accept();
+            if (!ds.sendFile(file)) {
+              std::cerr << "Error sending file!\n";
+            }
+              
+          });
+          send("STOR", file);
+          // check for error before join
+          t.join();
+          std::string rcvMsg = receiveMessage();
+          cout << rcvMsg;
+      }
+    }
+  }
+    break;
+
   case GET: {
     auto host = openPort();
     std::thread t([&] {
@@ -170,6 +203,37 @@ bool FTPClient::sendCommand(const std::string& command) {
     std::string rcvMsg = receiveMessage();
     cout << rcvMsg;
   }
+
+  case MGET: {
+    std::vector<std::string> files;
+    std::istringstream iss(param);
+    for (std::string s; iss >> s; ) {
+      expandGlob(s, files); // todo handle ascii type
+    }
+    for(auto& file: files) {
+      std::string yesOrNo;
+      std::cout << "mget " << file << "?";
+      std::getline(std::cin, yesOrNo);
+      if (yesOrNo.front() == 'n' || yesOrNo.front() == 'N') {
+        // ignore
+      } else {
+        auto host = openPort();
+        std::thread t([&] {
+          DataSocket ds = host->accept();
+          if (!ds.receiveFile(file)) {
+            std::cerr << "Error receiving file!\n";
+          }
+            
+        });
+        send("RETR", file);
+        // check for error before join
+        t.join();
+        std::string rcvMsg = receiveMessage();
+        std::cout << rcvMsg;
+      }
+    }
+  }
+    break;
 
   case CD: {
     send("CWD", param);
