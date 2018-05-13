@@ -23,13 +23,17 @@ unsigned short FTPClient::getResponseCode(const std::string& responseMessage) {
 }
 
 FTPCommand FTPClient::getFTPCommand(const std::string& str) {
-  if (str == "ls") return LS;
+  if (str == "ls" || str == "dir") return LS;
   if (str == "put") return PUT;
   if (str == "get") return GET;
   if (str == "cd") return CD;
   if (str == "lcd") return LCD;
   if (str == "delete") return DELE;
   if (str == "mdelete") return MDELE;
+  if (str == "mkdir") return MKDIR;
+  if (str == "rmdir") return RMDIR;
+  if (str == "pwd") return PWD;
+  if (str == "exit" || str == "quit") return EXIT;
 }
 
 std::string FTPClient::send(const std::string& command, const std::string& argument, bool printResponse) {
@@ -209,6 +213,28 @@ bool FTPClient::sendCommand(const std::string& command) {
   }
 
     break;
+
+  case MKDIR: {
+    send("MKD", param);
+  }
+    break;
+
+  case RMDIR: {
+    send("RMD", param);
+  }
+    break;
+
+  case PWD: {
+    send("PWD");
+  }
+    break;
+
+  case EXIT: {
+    send("QUIT");
+    exit(0);
+  }
+    break;
+
   default:
     return false;
   }

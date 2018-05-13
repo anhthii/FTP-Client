@@ -28,11 +28,15 @@ enum FTPCommand {
   CD,
   LCD,
   DELE,
-  MDELE
+  MDELE,
+  MKDIR,
+  RMDIR,
+  PWD,
+  EXIT
 };
 
 class FTPClient: public ConnectSocket {
-  std::string send(const std::string& command, const std::string& argument, bool printResponse = true);
+  std::string send(const std::string& command, const std::string& argument = "", bool printResponse = true);
   unsigned short getResponseCode(const std::string& responseMessage);
   FTPCommand getFTPCommand(const std::string& str);
   std::shared_ptr<HostSocket> openPort();
