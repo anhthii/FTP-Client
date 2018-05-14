@@ -9,13 +9,16 @@ BaseSocket::BaseSocket(int socketFd) : socketFd(socketFd) {
 }
 
 BaseSocket::~BaseSocket() {
-  close();
+  if (socketFd >= 0) {
+    close();
+  }
 }
 
 void BaseSocket::close() {
   if (::close(socketFd) < 0) {
     ErrorLog::BaseSocketError("Error on closing socket file descriptor");
   }
+  socketFd = -1;
 }
 
 // ============================= Data Socket ===========================================

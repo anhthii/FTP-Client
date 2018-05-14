@@ -66,8 +66,8 @@ bool FTPClient::sendPassword(const std::string& password) {
   return true;
 }
 
-std::shared_ptr<HostSocket> FTPClient::openPort() {
-  auto host = std::make_shared<HostSocket>(_myAddr);
+std::unique_ptr<HostSocket> FTPClient::openPort() {
+  auto host = std::make_unique<HostSocket>(_myAddr);
   const char* addr = (char*)&host->getAddr();
   const char* port = (char*)&host->getPort();
   std::stringstream ss;
@@ -87,23 +87,26 @@ std::shared_ptr<HostSocket> FTPClient::openPort() {
 }
 
 void FTPClient::expandGlob(const std::string& file, std::vector<std::string>& files) {
-  auto host = openPort();
-  std::thread t([&] {
-    DataSocket ds = host->accept();
-    std::string data = ds.receiveMessage();
-    if (data.empty()) {
-      cout << "No such file: " << file << "\n";
-    } else {
-      std::stringstream ss(data);
-      std::string line;
-      while (std::getline(ss, line)) {
-        files.push_back(line);
-      }
-    }
-  });
+  std::unique_ptr<HostSocket> host;
+  if (_mode == ACTIVE) {
+    host = openPort();
+  }
+
   send("NLST", file, false);
-  t.join();
-  
+
+  DataSocket ds = host->accept();
+  std::string data = ds.receiveMessage();
+  if (data.empty()) {
+    cout << "No such file: " << file << "\n";
+  } else {
+    std::stringstream ss(data);
+    std::string line;
+    while (std::getline(ss, line)) {
+      files.push_back(line);
+    }
+  }
+  ds.close();
+
   std::cout << receiveMessage();
 }
 
@@ -116,12 +119,12 @@ bool FTPClient::sendCommand(const std::string& command) {
   auto cmd = getFTPCommand(cmdStr);
   switch (cmd) {
   case LS: {
-    auto host = openPort();
-    std::thread t([&] {
-      DataSocket ds = host->accept();
-      std::string data = ds.receiveMessage();
-      cout << data;
-    });
+    // todo switch to ascii mode
+
+    std::unique_ptr<HostSocket> host;
+    if (_mode == ACTIVE) {
+      host = openPort();
+    }
 
     if (param.empty()) {
       sendMessage("LIST\r\n");
@@ -131,78 +134,71 @@ bool FTPClient::sendCommand(const std::string& command) {
       send("LIST", param);
     }
 
-    t.join();
+    DataSocket ds = host->accept();
+    std::string data = ds.receiveMessage();
+    cout << data;
+    
     std::string closeMsg = receiveMessage();
     cout << closeMsg;
   }
     break;
 
   case PUT: {
-    /* sendMessage("TYPE I\r\n"); // switch to binary mode */
-    /* std::string rcvMsg = receiveMessage(); */
-    /* cout << rcvMsg; */ 
-    auto host = openPort();
-    std::thread t([&] {
-      DataSocket ds = host->accept();
-      if (!ds.sendFile(param)) {
-        std::cerr << "Error sending file!\n";
-      }
+    std::unique_ptr<HostSocket> host;
+    if (_mode == ACTIVE) {
+      host = openPort();
+    }
         
-    });
     send("STOR", param);
-    // check for error before join
-    t.join();
+
+    DataSocket ds = host->accept();
+    if (!ds.sendFile(param)) {
+      std::cerr << "Error sending file!\n";
+    }
+    ds.close();
+
     std::string rcvMsg = receiveMessage();
     cout << rcvMsg;
   }
     break;
 
   case MPUT: {
-      std::vector<std::string> files;
-      std::istringstream iss(param);
-      for (std::string s; iss >> s; ) {
-        files.push_back(s);
-      }
-      for(auto& file: files) {
-        std::string yesOrNo;
-        std::cout << "mget " << file << "?";
-        std::getline(std::cin, yesOrNo);
-        if (yesOrNo.front() == 'n' || yesOrNo.front() == 'N') {
-          // ignore
-        } else {
-          auto host = openPort();
-          std::thread t([&] {
-            DataSocket ds = host->accept();
-            if (!ds.sendFile(file)) {
-              std::cerr << "Error sending file!\n";
-            }
-              
-          });
-          send("STOR", file);
-          // check for error before join
-          t.join();
-          std::string rcvMsg = receiveMessage();
-          cout << rcvMsg;
+    std::vector<std::string> files;
+    std::istringstream iss(param);
+    for (std::string s; iss >> s; ) {
+      files.push_back(s);
+    }
+    for(auto& file: files) {
+      std::string yesOrNo;
+      std::cout << "mput " << file << "?";
+      std::getline(std::cin, yesOrNo);
+      if (yesOrNo.front() == 'n' || yesOrNo.front() == 'N') {
+        // ignore
+      } else {
+        sendCommand("put " +  file);
       }
     }
   }
     break;
 
   case GET: {
-    auto host = openPort();
-    std::thread t([&] {
-      DataSocket ds = host->accept();
-      if (!ds.receiveFile(param)) {
-        std::cerr << "Error receiving file!\n";
-      }
-        
-    });
+    std::unique_ptr<HostSocket> host;
+    if (_mode == ACTIVE) {
+      host = openPort();
+    }
+
     send("RETR", param);
-    // check for error before join
-    t.join();
+
+    DataSocket ds = host->accept();
+    if (!ds.receiveFile(param)) {
+      std::cerr << "Error receiving file!\n";
+    }
+    ds.close();
+
     std::string rcvMsg = receiveMessage();
     cout << rcvMsg;
   }
+    break;
 
   case MGET: {
     std::vector<std::string> files;
@@ -217,19 +213,7 @@ bool FTPClient::sendCommand(const std::string& command) {
       if (yesOrNo.front() == 'n' || yesOrNo.front() == 'N') {
         // ignore
       } else {
-        auto host = openPort();
-        std::thread t([&] {
-          DataSocket ds = host->accept();
-          if (!ds.receiveFile(file)) {
-            std::cerr << "Error receiving file!\n";
-          }
-            
-        });
-        send("RETR", file);
-        // check for error before join
-        t.join();
-        std::string rcvMsg = receiveMessage();
-        std::cout << rcvMsg;
+        sendCommand("get " + file);
       }
     }
   }
@@ -256,6 +240,7 @@ bool FTPClient::sendCommand(const std::string& command) {
   case DELE: {
     send("DELE", param);
   }
+    break;
 
   case MDELE: {
     // splitting std::string by space
@@ -304,9 +289,5 @@ bool FTPClient::sendCommand(const std::string& command) {
   }
 
   return true;
-}
-
-void FTPClient::createDataChannel(std::function<void(const std::string&)> fn) { // not implemented yet
-  
 }
 

@@ -4,8 +4,6 @@
 #include "Socket.h"
 #include <string>
 #include <iostream>
-#include <thread>
-#include <functional>
 #include <memory>
 #include <vector>
 
@@ -41,12 +39,11 @@ class FTPClient: public ConnectSocket {
   std::string send(const std::string& command, const std::string& argument = "", bool printResponse = true);
   unsigned short getResponseCode(const std::string& responseMessage);
   FTPCommand getFTPCommand(const std::string& str);
-  std::shared_ptr<HostSocket> openPort();
+  std::unique_ptr<HostSocket> openPort();
   Mode _mode;
 
   public:
     bool static isValidCommand();
-    void static createDataChannel(std::function<void(const std::string&)> fn); 
     FTPClient(const std::string& host, int port = FTP_OPEN_PORT);
     void sendUsername(const std::string& username);
     bool sendPassword(const std::string& password);
