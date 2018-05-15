@@ -11,6 +11,7 @@
 #include <cstring>
 #include <cerrno>
 #include <string>
+#include <memory>
 
 class BaseSocket {
   int socketFd; // socket file descriptor
@@ -45,7 +46,7 @@ class HostSocket : public BaseSocket {
     HostSocket(sockaddr_in myAddr, unsigned short port = 0);
     const unsigned short& getPort() { return _port; }
     const uint32_t& getAddr() {return _addr; }
-    DataSocket accept();
+    std::unique_ptr<DataSocket> accept();
 };
 
 class ConnectSocket : public DataSocket {

@@ -32,7 +32,8 @@ enum FTPCommand {
   MKDIR,
   RMDIR,
   PWD,
-  EXIT
+  EXIT,
+  PASV
 };
 
 class FTPClient: public ConnectSocket {
@@ -40,6 +41,7 @@ class FTPClient: public ConnectSocket {
   unsigned short getResponseCode(const std::string& responseMessage);
   FTPCommand getFTPCommand(const std::string& str);
   std::unique_ptr<HostSocket> openPort();
+  std::unique_ptr<ConnectSocket> initPassive();
   Mode _mode;
 
   public:

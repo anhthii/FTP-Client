@@ -148,14 +148,14 @@ HostSocket::HostSocket(sockaddr_in myAddr, unsigned short port /* = 0 */) : Base
   _addr = myAddr.sin_addr.s_addr;
 }
 
-DataSocket HostSocket::accept() {
+std::unique_ptr<DataSocket> HostSocket::accept() {
   struct sockaddr_storage serverStorage;
   socklen_t addr_size = sizeof serverStorage;
   int newSocket = ::accept(getSocketFd(), (struct sockaddr*)&serverStorage, &addr_size);
   if (newSocket == -1) {
     ErrorLog::HostSocketError("Error on accepting");
   }
-  return DataSocket(newSocket);
+  return std::make_unique<DataSocket>(newSocket);
 }
 
 // ============================= Connect Socket ===========================================
