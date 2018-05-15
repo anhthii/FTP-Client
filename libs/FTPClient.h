@@ -45,7 +45,7 @@ class FTPClient: public ConnectSocket {
   Mode _mode;
 
   public:
-    bool static isValidCommand();
+    void static printHelp();
     FTPClient(const std::string& host, int port = FTP_OPEN_PORT);
     void sendUsername(const std::string& username);
     bool sendPassword(const std::string& password);

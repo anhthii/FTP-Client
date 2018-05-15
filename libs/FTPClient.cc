@@ -346,9 +346,29 @@ bool FTPClient::sendCommand(const std::string& command) {
   }
 
   default:
+    cout << "Invalid command." << std::endl;
     return false;
   }
 
   return true;
+}
+
+void FTPClient::printHelp(){
+	string cmd_desc = "";
+  cmd_desc += "passive                      : switch to passive mode.\n";
+	cmd_desc += "put     [sourcepath]filename : upload file(relative or absolute address) to the server.\n";
+	cmd_desc += "get     [sourcepath]filename : download file(relative or absolute address) from the server.\n" ;
+  cmd_desc += "delete  [sourcepath]filename : delete file(relative or absolute address) from the server.\n" ;
+  cmd_desc += "mput    [file1 file2...]     : upload multiple files to the server.\n";
+	cmd_desc += "mget    [file1 file2...]     : download multiple files from the server.\n" ;
+  cmd_desc += "mdelete [file1 file2...]     : delete file from the server.\n" ;
+	cmd_desc += "ls|dir  [sourcepath]         : list all files in sourcepath folder\n" ;
+	cmd_desc += "cd      [destination]        : change working directory of the server to destination.\n" ;
+  cmd_desc += "lcd     [destination]        : change local working directory.\n" ;
+  cmd_desc += "mkdir   [sourcepath]         : make directory on the server.\n" ;
+  cmd_desc += "rmdir   [sourcepath]         : remove directory on the server.\n" ;
+	cmd_desc += "pwd                          : display working directory of the server.\n" ; 
+	cmd_desc += "quit|exit                    : quit from ftp session and return to Unix prompt.\n";
+	std::cout << cmd_desc;
 }
 
