@@ -32,6 +32,51 @@ std::string DataSocket::receiveMessage() {
   return std::string(recvMsg);
 }
 
+// use for reading large data from socket file descriptor
+std::string DataSocket::receiveData() {
+  int rc = 0;
+  std::size_t n;
+  std::string msg;
+	char buffer[MAX_BUFF_SIZE];
+	memset(buffer, 0, MAX_BUFF_SIZE);
+
+  int flags;
+  flags = fcntl(getSocketFd(), F_GETFL, 0);
+  if (-1 == flags) {
+    ErrorLog::DataSocketError("fcntl");
+    exit(EXIT_FAILURE); 
+  }
+  fcntl(getSocketFd(), F_SETFL, flags | O_NONBLOCK);
+
+  struct timeval tv;
+  fd_set readfds;
+  tv.tv_sec = 0;
+  tv.tv_usec = 100000;
+  FD_ZERO(&readfds);
+  FD_SET(getSocketFd(), &readfds);
+
+	while(1) {
+		rc = select(getSocketFd() + 1, &readfds, NULL, NULL, &tv);
+		if(rc < 0) {
+      ErrorLog::DataSocketError("error on selecting file descriptor");
+      exit(EXIT_FAILURE);
+		} else if (rc == 0) {
+			return msg; // timeout
+		} else {
+			n = read(getSocketFd(), buffer, MAX_BUFF_SIZE -1);
+			if (n == 0) {
+				return msg;
+			} else if(n == -1) {
+				ErrorLog::DataSocketError("error on reading data");
+				return msg;
+			} else {
+				msg.append(buffer);
+        memset(buffer, 0, MAX_BUFF_SIZE);
+			}
+		}
+	}
+}
+
 void DataSocket::clearFd() {
   receiveMessage();
 }

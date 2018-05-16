@@ -12,6 +12,7 @@
 #include <cerrno>
 #include <string>
 #include <memory>
+#include <fcntl.h>
 
 class BaseSocket {
   int socketFd; // socket file descriptor
@@ -28,11 +29,12 @@ class BaseSocket {
 
 class DataSocket : public BaseSocket {
   public:
-    const static int MAX_BUFF_SIZE = 1024; 
+    const static int MAX_BUFF_SIZE = 512; 
     DataSocket(int socketFd) : BaseSocket(socketFd) {}
-    std::string receiveMessage();
     void clearFd(); // clear file descriptor
     void sendMessage(const std::string& msg);
+    std::string receiveMessage();
+    std::string receiveData();
     bool sendFile(const std::string& file);
     bool receiveFile(const std::string& file);
 };

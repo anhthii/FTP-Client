@@ -127,13 +127,14 @@ void FTPClient::expandGlob(const std::string& file, std::vector<std::string>& fi
     ds = host->accept();
   }
 
-  std::string data = ds->receiveMessage();
+  std::string data = ds->receiveData();
   if (data.empty()) {
     cout << "No such file: " << file << "\n";
   } else {
     std::stringstream ss(data);
     std::string line;
     while (std::getline(ss, line)) {
+      line.erase(line.length() - 1);
       files.push_back(line);
     }
   }
@@ -173,7 +174,7 @@ bool FTPClient::sendCommand(const std::string& command) {
       ds = host->accept();
     }
 
-    std::string data = ds->receiveMessage();
+    std::string data = ds->receiveData();
     cout << data;
     
     std::string closeMsg = receiveMessage();
@@ -306,7 +307,7 @@ bool FTPClient::sendCommand(const std::string& command) {
       if (yesOrNo.front() == 'n' || yesOrNo.front() == 'N') {
         // ignore
       } else {
-        send("DELE", file, true);
+        send("DELE", file);
       }
     }
   }
@@ -342,7 +343,7 @@ bool FTPClient::sendCommand(const std::string& command) {
       _mode = ACTIVE;
       std::cout << "Passive mode off." << std::endl;
     }
-             }
+  }
 
   default:
     return false;
