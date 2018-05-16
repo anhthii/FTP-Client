@@ -1,18 +1,17 @@
-# FTP Client
-## A simple File Transfer Protocol implementation in C++
+# A simple FTP Client implementation in C++
 
 ### A project in Computer Networking course
-
 #### Department: Information Technology department, Ho Chi Minh University of Science.
 #### Class code: CQ2016/4
 ####  Names and roll numbers:
-[Lê Minh Nghĩa 1612423](https://www.google.com)
+[Lê Minh Nghĩa 1612423](https://github.com/endless-love)
 
-[Nguyễn Đăng Anh Thi 1612645](https://github.com/endless-love)
+[Nguyễn Đăng Anh Thi 1612645](https://github.com/dkakashi69)
 
 ### Platform: Linux(only)
 
 ### Structure: OOP(Object Oriented Programming)
+
 ### Run
     $ ./ftp.out <host>
 
@@ -21,7 +20,6 @@
 ### Rebuild
 
     $ git clone git@github.com:dkakashi69/FTP-Client.git
-    $ cd ftp/src
     $ make
 
 
