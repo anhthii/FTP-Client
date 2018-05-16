@@ -20,7 +20,6 @@
 ### Rebuild
 
     $ git clone git@github.com:dkakashi69/FTP-Client.git
-    $ cd ftp/src
     $ make
 
 
