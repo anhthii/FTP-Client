@@ -183,12 +183,17 @@ bool FTPClient::sendCommand(const std::string& command) {
     break;
 
   case PUT: {
-    createDataChannel("STOR", param, [&param](std::shared_ptr<DataSocket> ds) {
-      if (!ds->sendFile(param)) {
-        std::cerr << "Error sending file!\n";
-      }
-      ds->close();
-    });
+    if (access(param.c_str(), R_OK) != -1) {
+      createDataChannel("STOR", param, [&param](std::shared_ptr<DataSocket> ds) {
+        if (!ds->sendFile(param)) {
+          std::cerr << "Error sending file!\n";
+        }
+        ds->close();
+      });
+
+    } else {
+      std::cout << param << ": File not found\n";
+    }
   }
     break;
 

@@ -112,7 +112,6 @@ bool DataSocket::sendFile(const std::string& file) {
   FILE* fin = std::fopen(file.c_str(), "r");
   if (!fin) {
     // todo
-    std::cout << "ERROR OPEN FILE!";
     return false;
   }
 
