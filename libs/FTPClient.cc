@@ -46,7 +46,10 @@ unsigned short FTPClient::send(const std::string& command, const std::string& ar
     cout << "Invalid FTP command argument\n";
     exit(1);
   }
-  std::cout << command << " " << argument << "\r\n";
+  if (_debug == true) {
+    std::cout << "---> " << command << " " << argument << "\r\n";
+  }
+  
   sendMessage(command + " " + argument + "\r\n");
   std::string rcvMsg = receiveMessage();
   if (printResponse == true) {
@@ -82,14 +85,30 @@ std::unique_ptr<HostSocket> FTPClient::openPort() {
       << "\r\n";
   // std::cout << ss.str();
   sendMessage(ss.str());
-  // clear file descriptor that containing non-use reponse message after sending port command
-  DataSocket::clearFd();
+  if (_debug) {
+    std::cout << "---> " << ss.str();
+    std::cout << receiveMessage();
+  } else {
+    // clear file descriptor that containing non-use reponse message after sending port command
+    DataSocket::clearFd(); 
+  }
   return host;
 }
 
 std::unique_ptr<ConnectSocket> FTPClient::initPassive() {
       sendMessage("PASV\r\n"); // todo handle error
-      std::istringstream ss(receiveMessage());
+      if (_debug) {
+        std::cout << "---> PASV" << std::endl;
+      }
+      std::string rcvMsg = receiveMessage();
+      if (_debug) {
+        std::cout << rcvMsg;
+      }
+      auto responseCode = getResponseCode(rcvMsg);
+      if (responseCode != FTPResponseCode::ENTERING_PASSIVE_MODE) {
+        return nullptr;
+      }
+      std::istringstream ss(rcvMsg);
 
       // todo write another parser
       ss.ignore(std::numeric_limits<std::streamsize>::max(), '(');
@@ -149,6 +168,7 @@ void FTPClient::createDataChannel(const std::string& command, const std::string&
     host = openPort();
   } else {
     ds = initPassive();
+    if (!ds) return;
   }
       
   auto responseCode = send(command, param);
@@ -328,6 +348,10 @@ bool FTPClient::sendCommand(const std::string& command) {
   }
 
   return true;
+}
+
+void FTPClient::debug(bool flag) {
+  _debug = flag;
 }
 
 void FTPClient::printHelp(){

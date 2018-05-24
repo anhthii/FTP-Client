@@ -10,13 +10,29 @@ int getch();
 std::string getpass(const char* prompt, bool show_asterisk = true);
 
 int main(int argc, char*argv[]) {
-  if (argc < 2) {
-    std::cout << "Host is not specifed." << std::endl;
-    std::cout << "Usage: ftp <host>" << std::endl;
+  std::string usage = "Usage: ftp [-d] [host]\n-d   Enables debugging.\n"; 
+  if (argc < 2 || argc > 3) {
+    std::cout << usage;
     exit(EXIT_FAILURE);
   }
 
-  FTPClient ftpClient(argv[1]);
+  if (argc == 3 && std::strcmp(argv[1], "-d") != 0) {
+    std::cout << usage;
+    exit(EXIT_FAILURE);
+  }
+
+  if (argc == 2 && std::strcmp(argv[1], "-d") == 0) {
+    std::cout << usage;
+    exit(EXIT_FAILURE);
+  }
+
+  std::string host = argv[2] ? argv[2] : argv[1];
+  FTPClient ftpClient(host);
+
+  if (std::strcmp(argv[1], "-d") == 0) {
+    ftpClient.debug(true);
+  }
+
   std::string userName, password;
   std::cout << "Username: ";
   std::getline(std::cin, userName); 

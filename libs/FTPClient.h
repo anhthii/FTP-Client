@@ -14,6 +14,7 @@ enum FTPResponseCode {
   LOGGED_ON = 230,
   SUCCESSFULLY_TRANSFERRED = 226,
   OPENING_DATA_CHANNEL = 150,
+  ENTERING_PASSIVE_MODE = 227,
 };
 
 enum Mode {
@@ -47,9 +48,11 @@ class FTPClient: public ConnectSocket {
   std::unique_ptr<HostSocket> openPort();
   std::unique_ptr<ConnectSocket> initPassive();
   Mode _mode;
+  bool _debug;
 
   public:
     void static printHelp();
+    void debug(bool flag = false);
     FTPClient(const std::string& host, int port = FTP_OPEN_PORT);
     void sendUsername(const std::string& username);
     bool sendPassword(const std::string& password);
