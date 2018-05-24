@@ -6,12 +6,14 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <functional>
 
 #define FTP_OPEN_PORT 21
 
 enum FTPResponseCode {
   LOGGED_ON = 230,
   SUCCESSFULLY_TRANSFERRED = 226,
+  OPENING_DATA_CHANNEL = 150,
 };
 
 enum Mode {
@@ -33,13 +35,15 @@ enum FTPCommand {
   RMDIR,
   PWD,
   EXIT,
-  PASV
+  PASV,
+  INVALID_COMMAND,
 };
 
 class FTPClient: public ConnectSocket {
-  std::string send(const std::string& command, const std::string& argument = "", bool printResponse = true);
+  unsigned short send(const std::string& command, const std::string& argument = "", bool printResponse = true);
   unsigned short getResponseCode(const std::string& responseMessage);
   FTPCommand getFTPCommand(const std::string& str);
+  void createDataChannel(const std::string& command, const std::string& param, std::function<void (std::shared_ptr<DataSocket>)> callback);
   std::unique_ptr<HostSocket> openPort();
   std::unique_ptr<ConnectSocket> initPassive();
   Mode _mode;

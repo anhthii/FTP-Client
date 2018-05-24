@@ -38,9 +38,10 @@ FTPCommand FTPClient::getFTPCommand(const std::string& str) {
   if (str == "pwd") return PWD;
   if (str == "exit" || str == "quit") return EXIT;
   if (str == "passive") return PASV;
+  return INVALID_COMMAND;
 }
 
-std::string FTPClient::send(const std::string& command, const std::string& argument, bool printResponse) {
+unsigned short FTPClient::send(const std::string& command, const std::string& argument, bool printResponse) {
   if (argument.size() > MAX_FTP_ARGUMENT_SIZE_ALLOWED) {
     cout << "Invalid FTP command argument\n";
     exit(1);
@@ -51,7 +52,7 @@ std::string FTPClient::send(const std::string& command, const std::string& argum
   if (printResponse == true) {
     cout << rcvMsg;
   }
-  return rcvMsg;
+  return getResponseCode(rcvMsg);
 }
 
 void FTPClient::sendUsername(const std::string& username) {
@@ -59,9 +60,7 @@ void FTPClient::sendUsername(const std::string& username) {
 }
 
 bool FTPClient::sendPassword(const std::string& password) {
-  std::string responseMessage = send("PASS", password);
-  auto responseCode = getResponseCode(responseMessage);
-
+  auto responseCode = send("PASS", password);
   if (responseCode != FTPResponseCode::LOGGED_ON) {
     return false;
   }
@@ -114,7 +113,7 @@ std::unique_ptr<ConnectSocket> FTPClient::initPassive() {
 
 void FTPClient::expandGlob(const std::string& file, std::vector<std::string>& files) {
   std::unique_ptr<HostSocket> host;
-  std::unique_ptr<DataSocket> ds;
+  std::shared_ptr<DataSocket> ds;
   if (_mode == ACTIVE) {
     host = openPort();
   } else {
@@ -143,6 +142,29 @@ void FTPClient::expandGlob(const std::string& file, std::vector<std::string>& fi
   std::cout << receiveMessage();
 }
 
+void FTPClient::createDataChannel(const std::string& command, const std::string& param, std::function<void (std::shared_ptr<DataSocket>)> callback) {
+  std::unique_ptr<HostSocket> host;
+  std::shared_ptr<DataSocket> ds;
+  if (_mode == ACTIVE) {
+    host = openPort();
+  } else {
+    ds = initPassive();
+  }
+      
+  auto responseCode = send(command, param);
+  // ignore if responsecode != 250
+  if (responseCode == FTPResponseCode::OPENING_DATA_CHANNEL) {
+    if (_mode == ACTIVE) {
+      ds = host->accept();
+    }
+
+    callback(ds);
+
+    std::string rcvMsg = receiveMessage();
+    cout << rcvMsg;  
+  }
+}
+
 bool FTPClient::sendCommand(const std::string& command) {
   std::string cmdStr, param;
   std::stringstream ss(command);
@@ -153,57 +175,20 @@ bool FTPClient::sendCommand(const std::string& command) {
   switch (cmd) {
   case LS: {
     // todo switch to ascii mode
-
-    std::unique_ptr<HostSocket> host;
-    std::unique_ptr<DataSocket> ds;
-    if (_mode == ACTIVE) {
-      host = openPort();
-    } else {
-      ds = initPassive();
-    }
-
-    if (param.empty()) {
-      sendMessage("LIST\r\n");
-      std::string rcvMsg = receiveMessage();
-      cout << rcvMsg; 
-    } else {
-      send("LIST", param);
-    }
-
-    if (_mode == ACTIVE) {
-      ds = host->accept();
-    }
-
-    std::string data = ds->receiveData();
-    cout << data;
-    
-    std::string closeMsg = receiveMessage();
-    cout << closeMsg;
+    createDataChannel("LIST", param, [&param](std::shared_ptr<DataSocket> ds) {
+      std::string data = ds->receiveData();
+      cout << data;
+    });
   }
     break;
 
   case PUT: {
-    std::unique_ptr<HostSocket> host;
-    std::unique_ptr<DataSocket> ds;
-    if (_mode == ACTIVE) {
-      host = openPort();
-    } else {
-      ds = initPassive();
-    }
-        
-    send("STOR", param);
-
-    if (_mode == ACTIVE) {
-      ds = host->accept();
-    }
-
-    if (!ds->sendFile(param)) {
-      std::cerr << "Error sending file!\n";
-    }
-    ds->close();
-
-    std::string rcvMsg = receiveMessage();
-    cout << rcvMsg;
+    createDataChannel("STOR", param, [&param](std::shared_ptr<DataSocket> ds) {
+      if (!ds->sendFile(param)) {
+        std::cerr << "Error sending file!\n";
+      }
+      ds->close();
+    });
   }
     break;
 
@@ -227,27 +212,12 @@ bool FTPClient::sendCommand(const std::string& command) {
     break;
 
   case GET: {
-    std::unique_ptr<HostSocket> host;
-    std::unique_ptr<DataSocket> ds;
-    if (_mode == ACTIVE) {
-      host = openPort();
-    } else {
-      ds = initPassive();
-    }
-
-    send("RETR", param);
-
-    if (_mode == ACTIVE) {
-      ds = host->accept();
-    }
-
-    if (!ds->receiveFile(param)) {
-      std::cerr << "Error receiving file!\n";
-    }
-    ds->close();
-
-    std::string rcvMsg = receiveMessage();
-    cout << rcvMsg;
+    createDataChannel("RETR", param, [&param](std::shared_ptr<DataSocket> ds) {
+      if (!ds->receiveFile(param)) {
+        std::cerr << "Error receiving file!\n";
+      }
+      ds->close();
+    });
   }
     break;
 
@@ -344,7 +314,9 @@ bool FTPClient::sendCommand(const std::string& command) {
       std::cout << "Passive mode off." << std::endl;
     }
   }
+    break;
 
+  case INVALID_COMMAND:
   default:
     cout << "Invalid command." << std::endl;
     return false;
