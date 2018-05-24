@@ -3,9 +3,11 @@
 #include <iostream>
 #include <termios.h>
 #include <unistd.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 int getch();
-std::string getpass(const char *prompt, bool show_asterisk = true);
+std::string getpass(const char* prompt, bool show_asterisk = true);
 
 int main(int argc, char*argv[]) {
   if (argc < 2) {
@@ -27,9 +29,20 @@ int main(int argc, char*argv[]) {
   }
 
   while (1) {
-    std::string cmd;
-    std::cout << "ftp> ";
-    std::getline(std::cin, cmd);
+    char* input = readline("ftp> ");
+
+    // Check for EOF.
+    if (!input)
+        break;
+
+    // Add input to history.
+    add_history(input);
+
+    std::string cmd(input);
+
+    // Free input.
+    free(input);
+
     if (cmd == "help") {
       FTPClient::printHelp();
       continue;
@@ -53,38 +66,33 @@ int getch() {
   return ch;
 }
 
-
-std::string getpass(const char *prompt, bool show_asterisk)
-{
+std::string getpass(const char* prompt, bool show_asterisk) {
   using std::cout;
   using std::endl;
   using std::string;
-  const char BACKSPACE=127;
-  const char RETURN=10;
+
+  const char BACKSPACE = 127;
+  const char RETN = 10;
 
   string password;
-  unsigned char ch=0;
+  unsigned char ch = 0;
 
-  cout <<prompt;
+  cout << prompt;
 
-  while((ch=getch())!=RETURN)
-    {
-       if(ch==BACKSPACE)
-         {
-            if(password.length()!=0)
-              {
-                 if(show_asterisk)
-                 cout <<"\b \b";
-                 password.resize(password.length()-1);
-              }
-         }
-       else
-         {
-             password+=ch;
-             if(show_asterisk)
-                 cout <<'*';
-         }
+  while ((ch=getch()) != RETN) {
+    if (ch == BACKSPACE) {
+      if (password.length() != 0) {
+        if (show_asterisk)
+          cout <<"\b \b";
+        password.resize(password.length() - 1);
+      }
+    } else {
+      password += ch;
+      if (show_asterisk)
+        cout << '*';
     }
-  cout <<endl;
+  }
+  cout << endl;
   return password;
 }
+

@@ -1,11 +1,11 @@
 CXX = g++
-CXXFLAGS = -c -g -std=c++14 
+CXXFLAGS = -Wall -Wextra -c -g -std=c++14 -lreadline 
 
 .PHONY: libs all
 all: cli_exec
 
 cli_exec: libs main.o
-	$(CXX) $(wildcard builds/*.o) -o  ftp.out; \
+	$(CXX) -lreadline $(wildcard builds/*.o) -o ftp.out; \
 
 main.o: main.cc
 	$(CXX) $(CXXFLAGS) -Ilibs main.cc -o builds/main.o
@@ -16,4 +16,4 @@ libs:
 	mv *.o ../builds; \
 
 clean:
-	rm -rf builds/ cli.out
+	rm -rf builds/* ftp.out
