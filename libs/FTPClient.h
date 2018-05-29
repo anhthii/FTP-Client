@@ -8,8 +8,6 @@
 #include <vector>
 #include <functional>
 
-#define FTP_OPEN_PORT 21
-
 enum FTPResponseCode {
   LOGGED_ON = 230,
   SUCCESSFULLY_TRANSFERRED = 226,
@@ -52,8 +50,10 @@ class FTPClient: public ConnectSocket {
 
   public:
     void static printHelp();
-    void debug(bool flag = false);
-    FTPClient(const std::string& host, int port = FTP_OPEN_PORT);
+    void debug(bool flag) { _debug = flag; }
+    void passive(bool flag) { _mode = flag ? PASSIVE : ACTIVE; }
+    
+    FTPClient(const std::string& host, int port);
     void sendUsername(const std::string& username);
     bool sendPassword(const std::string& password);
     bool sendCommand(const std::string& command);

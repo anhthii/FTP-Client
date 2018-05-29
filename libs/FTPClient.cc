@@ -8,7 +8,8 @@
 using std::string;
 using std::cout;
 
-FTPClient::FTPClient(const std::string& host, int port /* = FTP_OPEN_PORT */) : ConnectSocket(host, port) {
+FTPClient::FTPClient(const std::string& host, int port) : ConnectSocket(host, port) {
+  _debug = false;
   _mode = ACTIVE;
   cout << "Simple FTP client\n" << "";
   cout << "Connection established, waiting for welcome message...\n";
@@ -331,12 +332,11 @@ bool FTPClient::sendCommand(const std::string& command) {
     break;
 
   case PASV: {
+    passive(_mode == ACTIVE);
     if (_mode == ACTIVE) {
-      _mode = PASSIVE;
-      std::cout << "Passive mode on." << std::endl;
-    } else {
-      _mode = ACTIVE;
       std::cout << "Passive mode off." << std::endl;
+    } else {
+      std::cout << "Passive mode on." << std::endl;
     }
   }
     break;
@@ -348,10 +348,6 @@ bool FTPClient::sendCommand(const std::string& command) {
   }
 
   return true;
-}
-
-void FTPClient::debug(bool flag) {
-  _debug = flag;
 }
 
 void FTPClient::printHelp(){
