@@ -2,6 +2,7 @@
 #include <sstream>
 #include <limits>
 #include <vector>
+#include <libgen.h>
 #define MAX_FTP_ARGUMENT_SIZE_ALLOWED 500
 #define MAX_PATH_SIZE 256
 
@@ -21,7 +22,7 @@ unsigned short FTPClient::getResponseCode(const std::string& responseMessage) {
   std::stringstream ss(responseMessage);
   unsigned short responseCode;
   ss >> responseCode;
-  return responseCode; 
+  return responseCode;
 }
 
 FTPCommand FTPClient::getFTPCommand(const std::string& str) {
@@ -50,7 +51,7 @@ unsigned short FTPClient::send(const std::string& command, const std::string& ar
   if (_debug == true) {
     std::cout << "---> " << command << " " << argument << "\r\n";
   }
-  
+
   sendMessage(command + " " + argument + "\r\n");
   std::string rcvMsg = receiveMessage();
   if (printResponse == true) {
@@ -76,7 +77,7 @@ std::unique_ptr<HostSocket> FTPClient::openPort() {
   const char* addr = (char*)&host->getAddr();
   const char* port = (char*)&host->getPort();
   std::stringstream ss;
-  ss << "PORT " 
+  ss << "PORT "
       << ((int)addr[0] & 0xff) << ","
       << ((int)addr[1] & 0xff) << ","
       << ((int)addr[2] & 0xff) << ","
@@ -91,7 +92,7 @@ std::unique_ptr<HostSocket> FTPClient::openPort() {
     std::cout << receiveMessage();
   } else {
     // clear file descriptor that containing non-use reponse message after sending port command
-    DataSocket::clearFd(); 
+    DataSocket::clearFd();
   }
   return host;
 }
@@ -123,7 +124,7 @@ std::unique_ptr<ConnectSocket> FTPClient::initPassive() {
          >> port1 >> comma
          >> port2;
 
-      std::string addr = 
+      std::string addr =
         std::to_string(addr1) + '.' +
         std::to_string(addr2) + '.' +
         std::to_string(addr3) + '.' +
@@ -171,7 +172,7 @@ void FTPClient::createDataChannel(const std::string& command, const std::string&
     ds = initPassive();
     if (!ds) return;
   }
-      
+
   auto responseCode = send(command, param);
   // ignore if responsecode != 250
   if (responseCode == FTPResponseCode::OPENING_DATA_CHANNEL) {
@@ -182,7 +183,7 @@ void FTPClient::createDataChannel(const std::string& command, const std::string&
     callback(ds);
 
     std::string rcvMsg = receiveMessage();
-    cout << rcvMsg;  
+    cout << rcvMsg;
   }
 }
 
@@ -191,7 +192,7 @@ bool FTPClient::sendCommand(const std::string& command) {
   std::stringstream ss(command);
   ss >> cmdStr >> std::ws;
   std::getline(ss, param);
-  
+
   auto cmd = getFTPCommand(cmdStr);
   switch (cmd) {
   case LS: {
@@ -204,9 +205,14 @@ bool FTPClient::sendCommand(const std::string& command) {
     break;
 
   case PUT: {
-    if (access(param.c_str(), R_OK) != -1) {
-      createDataChannel("STOR", param, [&param](std::shared_ptr<DataSocket> ds) {
-        if (!ds->sendFile(param)) {
+    std::string pathToFile = param;
+    char* s = strdup(param.c_str());
+    char* filename = basename(s); // get filename from path
+
+    if (access(pathToFile.c_str(), R_OK) != -1) {
+      // we are only allowed to send filename not the whole path
+      createDataChannel("STOR", filename, [&](std::shared_ptr<DataSocket> ds) {
+        if (!ds->sendFile(pathToFile)) {
           std::cerr << "Error sending file!\n";
         }
         ds->close();
@@ -238,8 +244,11 @@ bool FTPClient::sendCommand(const std::string& command) {
     break;
 
   case GET: {
-    createDataChannel("RETR", param, [&param](std::shared_ptr<DataSocket> ds) {
-      if (!ds->receiveFile(param)) {
+    std::string pathToFile = param;
+    char* s = strdup(param.c_str());
+    char* filename = basename(s); // get filename from path
+    createDataChannel("RETR", pathToFile, [&](std::shared_ptr<DataSocket> ds) {
+      if (!ds->receiveFile(filename)) {
         std::cerr << "Error receiving file!\n";
       }
       ds->close();
@@ -283,7 +292,7 @@ bool FTPClient::sendCommand(const std::string& command) {
     }
   }
     break;
-  
+
   case DELE: {
     send("DELE", param);
   }
@@ -364,7 +373,7 @@ void FTPClient::printHelp(){
   cmd_desc += "lcd     [destination]        : change local working directory.\n" ;
   cmd_desc += "mkdir   [sourcepath]         : make directory on the server.\n" ;
   cmd_desc += "rmdir   [sourcepath]         : remove directory on the server.\n" ;
-	cmd_desc += "pwd                          : display working directory of the server.\n" ; 
+	cmd_desc += "pwd                          : display working directory of the server.\n" ;
 	cmd_desc += "quit|exit                    : quit from ftp session and return to Unix prompt.\n";
 	std::cout << cmd_desc;
 }
