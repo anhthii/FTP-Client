@@ -3,6 +3,9 @@
 #include <limits>
 #include <vector>
 #include <libgen.h>
+#include <wordexp.h>
+#include <sys/stat.h>
+
 #define MAX_FTP_ARGUMENT_SIZE_ALLOWED 500
 #define MAX_PATH_SIZE 256
 
@@ -154,7 +157,7 @@ void FTPClient::expandGlob(const std::string& file, std::vector<std::string>& fi
     std::stringstream ss(data);
     std::string line;
     while (std::getline(ss, line)) {
-      line.erase(line.length() - 1);
+      line.pop_back(); // remove \r
       files.push_back(line);
     }
   }
@@ -227,9 +230,32 @@ bool FTPClient::sendCommand(const std::string& command) {
   case MPUT: {
     std::vector<std::string> files;
     std::istringstream iss(param);
-    for (std::string s; iss >> s; ) {
-      files.push_back(s);
+    
+    wordexp_t result;
+    switch (wordexp(param.c_str(), &result, 0)) {
+      case 0:
+        break;
+      case WRDE_NOSPACE:
+        std::cerr << "Error allocating memory to expand " << param << "!\n";
+        wordfree(&result);
+        return false;
+
+      default:
+        std::cerr << "Error expanding " << param << "!\n";
+        return false;
     }
+
+    for (std::size_t i = 0; i < result.we_wordc; ++i) {
+      struct stat sb;
+      if (stat(result.we_wordv[i], &sb) == -1) {
+        continue;
+      }
+      if (S_ISREG(sb.st_mode)) {
+        files.push_back(result.we_wordv[i]);
+      }
+    }
+    wordfree(&result);
+
     for(auto& file: files) {
       std::string yesOrNo;
       std::cout << "mput " << file << "?";

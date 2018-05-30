@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -c -g -std=c++14 -lreadline 
+CXXFLAGS = -Wall -Wextra -c -g -std=c++14 -lreadline 
 
 .PHONY: libs all
 all: cli_exec

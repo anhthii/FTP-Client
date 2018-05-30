@@ -25,7 +25,7 @@ void BaseSocket::close() {
 std::string DataSocket::receiveMessage() {
   char recvMsg[MAX_BUFF_SIZE];
   ::memset(recvMsg, 0, MAX_BUFF_SIZE);
-  std::size_t n;
+  ssize_t n;
   n = ::read(getSocketFd(), recvMsg, MAX_BUFF_SIZE);
   if (n < 0)
     ErrorLog::DataSocketError("error occuring when receiving data");
@@ -35,10 +35,10 @@ std::string DataSocket::receiveMessage() {
 // use for reading large data from socket file descriptor
 std::string DataSocket::receiveData() {
   int rc = 0;
-  std::size_t n;
+  ssize_t n;
   std::string msg;
-	char buffer[MAX_BUFF_SIZE];
-	memset(buffer, 0, MAX_BUFF_SIZE);
+  char buffer[MAX_BUFF_SIZE];
+  memset(buffer, 0, MAX_BUFF_SIZE);
 
   int flags;
   flags = fcntl(getSocketFd(), F_GETFL, 0);
@@ -55,26 +55,26 @@ std::string DataSocket::receiveData() {
   FD_ZERO(&readfds);
   FD_SET(getSocketFd(), &readfds);
 
-	while(1) {
-		rc = select(getSocketFd() + 1, &readfds, NULL, NULL, &tv);
-		if(rc < 0) {
+  while(1) {
+    rc = select(getSocketFd() + 1, &readfds, NULL, NULL, &tv);
+    if(rc < 0) {
       ErrorLog::DataSocketError("error on selecting file descriptor");
       exit(EXIT_FAILURE);
-		} else if (rc == 0) {
-			return msg; // timeout
-		} else {
-			n = read(getSocketFd(), buffer, MAX_BUFF_SIZE -1);
-			if (n == 0) {
-				return msg;
-			} else if(n == -1) {
-				ErrorLog::DataSocketError("error on reading data");
-				return msg;
-			} else {
-				msg.append(buffer);
-        memset(buffer, 0, MAX_BUFF_SIZE);
-			}
-		}
-	}
+    } else if (rc == 0) {
+      return msg; // timeout
+    } else {
+      n = read(getSocketFd(), buffer, MAX_BUFF_SIZE -1);
+      if (n == 0) {
+	return msg;
+      } else if(n == -1) {
+	ErrorLog::DataSocketError("error on reading data");
+	return msg;
+      } else {
+	msg.append(buffer);
+	memset(buffer, 0, MAX_BUFF_SIZE);
+      }
+    }
+  }
 }
 
 void DataSocket::clearFd() {
@@ -87,23 +87,22 @@ void DataSocket::sendMessage(const std::string& msg) {
   std::size_t dataWritten = 0;
 
   while(dataWritten < size) {
-    std::size_t put = ::write(getSocketFd(), buffer + dataWritten, size - dataWritten);
+    ssize_t put = ::write(getSocketFd(), buffer + dataWritten, size - dataWritten);
 
-    if (put == static_cast<std::size_t>(-1)) {
+    if (put == -1) {
       switch(errno) {
         case EPIPE:
         {
-            // fatal error
+	  // fatal error
           ErrorLog::DataSocketError("error occuring when sending data");
         }
         case EAGAIN:
         {
-            // temporary error, retry writing data
-            continue;
+	  // temporary error, retry writing data
+	  continue;
         }
       }
     }
-
     dataWritten += put;
   }  
 }

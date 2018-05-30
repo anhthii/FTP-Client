@@ -85,8 +85,6 @@ int main(int argc, char*argv[]) {
 
   if ( optind < argc ) {
       host = argv[optind++];
-      std::cout << host << std::endl;
-      std::cout << port << std::endl;
       if (optind < argc) {
         std::stringstream ss(argv[optind]);
         ss >> port;
