@@ -101,7 +101,7 @@ std::unique_ptr<HostSocket> FTPClient::openPort() {
 }
 
 std::unique_ptr<ConnectSocket> FTPClient::initPassive() {
-      sendMessage("PASV\r\n"); // todo handle error
+      sendMessage("PASV\r\n");
       if (_debug) {
         std::cout << "---> PASV" << std::endl;
       }
@@ -111,12 +111,15 @@ std::unique_ptr<ConnectSocket> FTPClient::initPassive() {
       }
       auto responseCode = getResponseCode(rcvMsg);
       if (responseCode != FTPResponseCode::ENTERING_PASSIVE_MODE) {
+        std::cout << "Passive mode refused." << std::endl;
         return nullptr;
       }
       std::istringstream ss(rcvMsg);
 
-      // todo write another parser
-      ss.ignore(std::numeric_limits<std::streamsize>::max(), '(');
+      ss >> responseCode;
+      while (!std::isdigit(ss.peek())) {
+        ss.get();
+      }
       char comma;
       unsigned int addr1, addr2, addr3, addr4;
       unsigned short port1, port2;
